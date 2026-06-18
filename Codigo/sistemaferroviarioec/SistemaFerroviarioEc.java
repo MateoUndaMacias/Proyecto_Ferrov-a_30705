@@ -1,10 +1,10 @@
 
-package sistemaferroviarioec;
+package samartRail;
 
 import vista.FrmLogin;
 import vista.TemaSistema;
 
-public class SistemaFerroviarioEc {
+public class SmartRail {
 
     public static void main(String[] args) {
         java.awt.EventQueue.invokeLater(() -> {
