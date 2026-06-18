@@ -29,10 +29,64 @@ public class TrenControlador {
 
     public boolean registrarTren(Document tren) {
         boolean ok = trenDAO.insertar(tren);
-        // Patrón Observer: notifica a los observadores que los datos de trenes han
-        // cambiado
-        if (ok)
+
+        // Notifica cambios
+        if (ok) {
             NotificadorCambios.getInstancia().notificar(ObservadorCambios.TIPO_TREN);
+        }
+
+        return ok;
+    }
+
+    // ============================================
+    // ELIMINAR TREN
+    // ============================================
+    public boolean eliminarTren(String codigo) {
+        boolean ok = trenDAO.eliminarTren(codigo);
+
+        if (ok) {
+            NotificadorCambios.getInstancia().notificar(ObservadorCambios.TIPO_TREN);
+        }
+
+        return ok;
+    }
+
+    // ============================================
+    // ACTIVAR / DESACTIVAR TREN
+    // ============================================
+    public boolean cambiarEstado(String codigo, boolean activo) {
+        boolean ok = trenDAO.cambiarEstado(codigo, activo);
+
+        if (ok) {
+            NotificadorCambios.getInstancia().notificar(ObservadorCambios.TIPO_TREN);
+        }
+
+        return ok;
+    }
+
+    // ============================================
+    // EDITAR TREN
+    // ============================================
+    public boolean actualizarTren(String codigo, String ruta, int capacidad, double precio, boolean activo) {
+
+        if (codigo == null || codigo.trim().isEmpty()) {
+            return false;
+        }
+
+        if (ruta == null || ruta.trim().isEmpty()) {
+            return false;
+        }
+
+        if (capacidad <= 0 || precio <= 0) {
+            return false;
+        }
+
+        boolean ok = trenDAO.actualizarTren(codigo, ruta, capacidad, precio, activo);
+
+        if (ok) {
+            NotificadorCambios.getInstancia().notificar(ObservadorCambios.TIPO_TREN);
+        }
+
         return ok;
     }
 }
