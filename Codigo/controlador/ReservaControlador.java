@@ -45,16 +45,6 @@ public class ReservaControlador {
         return ok;
     }
 
-    public boolean pagar(String idReserva, double monto, String username, String metodoPago) {
-        if (idReserva == null)
-            return false;
-        boolean ok = dao.pagarReserva(idReserva, monto, username, metodoPago);
-        // Patrón Observer: notifica cambio tras pago
-        if (ok)
-            NotificadorCambios.getInstancia().notificar(ObservadorCambios.TIPO_RESERVA);
-        return ok;
-    }
-
     public List<Reserva> listarReservas() {
         return dao.listarReservas();
     }
