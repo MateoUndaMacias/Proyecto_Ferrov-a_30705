@@ -8,20 +8,18 @@ import java.util.ArrayList;
 import java.util.List;
 import org.bson.Document;
 
-// Patrón DAO: encapsula el acceso a las colecciones "reservas", "horarios" y "pagos" de MongoDB.
+// Patrón DAO: encapsula el acceso a las colecciones "reservas" y "horarios" de MongoDB.
 // SOLID (S): responsabilidad única — solo gestiona la persistencia de reservas.
 public class ReservaDAO {
 
     private MongoCollection<Document> reservasCol;
     private MongoCollection<Document> horariosCol;
-    private MongoCollection<Document> pagosCol;
 
     public ReservaDAO() {
         MongoDatabase db = ConexionBD.getConexion();
         if (db != null) {
             reservasCol = db.getCollection("reservas");
             horariosCol = db.getCollection("horarios");
-            pagosCol = db.getCollection("pagos");
         }
     }
 
@@ -31,45 +29,6 @@ public class ReservaDAO {
         }
         reservasCol.insertOne(reserva);
         return true;
-    }
-
-    public boolean pagarReserva(String idReserva, double monto, String username, String metodoPago) {
-        if (reservasCol == null || idReserva == null)
-            return false;
-
-        try {
-            org.bson.types.ObjectId oid = new org.bson.types.ObjectId(idReserva);
-
-            Document res = reservasCol.find(eq("_id", oid)).first();
-            if (res == null)
-                return false;
-
-            String estadoActual = res.getString("estado");
-            if (!"PENDIENTE".equalsIgnoreCase(estadoActual)) {
-                return false;
-            }
-
-            String metodo = (metodoPago != null && !metodoPago.trim().isEmpty()) ? metodoPago.trim() : "Efectivo";
-            Document pago = new Document()
-                    .append("username", username)
-                    .append("reservaId", idReserva)
-                    .append("monto", monto)
-                    .append("metodoPago", metodo)
-                    .append("estado", "COMPLETADO");
-
-            if (pagosCol != null) {
-                pagosCol.insertOne(pago);
-            }
-
-            reservasCol.updateOne(
-                    eq("_id", oid),
-                    new Document("$set", new Document("estado", "PAGADO")));
-
-            return true;
-
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
     }
 
     public boolean cancelarReserva(String idReserva) {
@@ -84,7 +43,8 @@ public class ReservaDAO {
                 return false;
 
             String estadoActual = res.getString("estado");
-            if (!"PENDIENTE".equalsIgnoreCase(estadoActual)) {
+            //  Solo permitir cancelar si está RESERVADO
+            if (!"RESERVADO".equalsIgnoreCase(estadoActual)) {
                 return false;
             }
 
@@ -141,12 +101,14 @@ public class ReservaDAO {
 
         Document hDoc = null;
         String idHorario = r.getIdHorario();
+
         if (idHorario != null && idHorario.trim().length() == 24 && esHex(idHorario.trim())) {
             try {
                 hDoc = horariosCol.find(eq("_id", new org.bson.types.ObjectId(idHorario.trim()))).first();
             } catch (IllegalArgumentException ignored) {
             }
         }
+
         if (hDoc == null) {
             hDoc = horariosCol.find(
                     and(
@@ -163,23 +125,12 @@ public class ReservaDAO {
             r.setHoraLlegada("-");
         }
 
+        // ✅ Eliminamos lógica de pagos → ahora monto solo viene de la reserva
         Object montoReserva = rDoc.get("monto");
-        if (montoReserva instanceof Number && ((Number) montoReserva).doubleValue() > 0) {
+        if (montoReserva instanceof Number) {
             r.setMonto(((Number) montoReserva).doubleValue());
         } else {
-            Document pDoc = pagosCol.find(
-                    eq("reservaId", r.getId())).first();
-
-            if (pDoc != null) {
-                Object montoObj = pDoc.get("monto");
-                if (montoObj instanceof Number) {
-                    r.setMonto(((Number) montoObj).doubleValue());
-                } else {
-                    r.setMonto(0.0);
-                }
-            } else {
-                r.setMonto(0.0);
-            }
+            r.setMonto(0.0);
         }
 
         return r;
@@ -188,11 +139,15 @@ public class ReservaDAO {
     private static boolean esHex(String s) {
         if (s == null || s.length() != 24)
             return false;
+
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
-            if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
+            if (!((c >= '0' && c <= '9') ||
+                  (c >= 'a' && c <= 'f') ||
+                  (c >= 'A' && c <= 'F')))
                 return false;
         }
+
         return true;
     }
 }
