@@ -59,11 +59,6 @@ public class SistemaFacade {
     }
 
     // Facade: delega al ReservaControlador
-    public boolean pagarReserva(String idReserva, double monto, String username, String metodoPago) {
-        return reservaControl.pagar(idReserva, monto, username, metodoPago);
-    }
-
-    // Facade: delega al ReservaControlador
     public boolean crearReserva(Document docReserva) {
         return reservaControl.crearReserva(docReserva);
     }
