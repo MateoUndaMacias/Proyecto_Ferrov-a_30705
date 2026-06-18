@@ -8,7 +8,6 @@ import java.util.List;
 import org.bson.Document;
 
 // Patrón DAO: encapsula el acceso a la colección "usuarios" de MongoDB.
-// SOLID (S): responsabilidad única — solo gestiona la persistencia de usuarios.
 public class UsuarioDAO {
 
     private MongoCollection<Document> coleccion;
@@ -32,17 +31,10 @@ public class UsuarioDAO {
                 eq("activo", true))).first();
 
         if (doc != null) {
-            String passIngresadoHash = util.SeguridadUtils.sha256(password);
             String passAlmacenado = doc.getString("password");
 
-            if (passIngresadoHash.equals(passAlmacenado)) {
-                return documentToUsuario(doc);
-            }
-
+            // ✅ Comparación directa (sin hash)
             if (password.equals(passAlmacenado)) {
-                coleccion.updateOne(
-                        eq("_id", doc.getObjectId("_id")),
-                        new Document("$set", new Document("password", passIngresadoHash)));
                 return documentToUsuario(doc);
             }
         }
@@ -63,15 +55,15 @@ public class UsuarioDAO {
             return false;
         }
 
+        // Verificar usuario duplicado
         if (coleccion.find(eq("username", u.getUsername().trim())).first() != null) {
             return false;
         }
 
-        String passHash = util.SeguridadUtils.sha256(u.getPassword());
-
+        // ✅ Guardar contraseña SIN encriptar
         Document doc = new Document("nombre", u.getNombre())
                 .append("username", u.getUsername().trim())
-                .append("password", passHash)
+                .append("password", u.getPassword())
                 .append("rol", u.getRol())
                 .append("activo", true);
 
@@ -81,6 +73,7 @@ public class UsuarioDAO {
 
     public List<Usuario> listarUsuarios() {
         List<Usuario> lista = new ArrayList<>();
+
         if (coleccion == null) {
             return lista;
         }
@@ -94,13 +87,16 @@ public class UsuarioDAO {
 
     private Usuario documentToUsuario(Document doc) {
         Usuario u = new Usuario();
+
         if (doc.getObjectId("_id") != null) {
             u.setId(doc.getObjectId("_id").toHexString());
         }
+
         u.setNombre(doc.getString("nombre"));
         u.setUsername(doc.getString("username"));
         u.setRol(doc.getString("rol"));
         u.setActivo(doc.getBoolean("activo", true));
+
         return u;
     }
 }
